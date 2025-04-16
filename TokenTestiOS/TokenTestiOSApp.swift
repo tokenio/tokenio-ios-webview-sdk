@@ -1,32 +1,18 @@
-//
-//  TokenTestiOSApp.swift
-//  TokenTestiOS
-//
-//  Created by Josh Lister on 10/04/2025.
-//
 
 import SwiftUI
-import SwiftData
 
 @main
 struct TokenTestiOSApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-
+    @StateObject private var paymentCompletionHandler = PaymentCompletionHandler()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(paymentCompletionHandler)
+                .onOpenURL { url in
+                    print("--- TokenTestiOSApp.onOpenURL triggered ---")
+                    paymentCompletionHandler.handleIncomingURL(url)
+                }
         }
-        .modelContainer(sharedModelContainer)
     }
 }
