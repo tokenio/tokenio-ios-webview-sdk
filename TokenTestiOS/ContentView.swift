@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject var paymentCompletionHandler: PaymentCompletionHandler // Access the shared handler
@@ -24,29 +25,20 @@ struct ContentView: View {
     @State private var selectedSepaInstrument: String = "SEPA_INSTANT"
     private let sepaInstruments = ["SEPA_INSTANT", "SEPA"]
     
-    var body: some View {
-        // Computed property to bind sheet presentation to payment status
-        let paymentStatusBinding = Binding<Bool>(
-            get: { paymentCompletionHandler.paymentStatus != nil },
-            set: { _ in /* This binding is read-only for presentation */ }
+    private var externalResultBinding: Binding<Bool> {
+        Binding<Bool>(
+            get: { paymentCompletionHandler.paymentStatus != nil && paymentUrl == nil },
+            set: { _ in
+                // If we need to dismiss programmatically by setting this to false,
+                // we might need to reset the paymentStatus here.
+                // For now, the onDismiss handles the reset.
+            }
         )
-        
-        NavigationView {
+    }
+    
+    var body: some View {
+        NavigationStack {
             VStack(spacing: 20) { // Adjusted spacing
-                // Move NavigationLink to the top of the VStack
-                NavigationLink(
-                    destination: PaymentWebView(environment: selectedEnvironment, initialUrl: paymentUrl),
-                    isActive: Binding<Bool>(
-                        get: { paymentUrl != nil },
-                        set: { isActive in
-                            print("[DEBUG] NavigationLink isActive set to", isActive)
-                            if !isActive {
-                                print("[DEBUG] Setting paymentUrl = nil from NavigationLink set closure")
-                                paymentUrl = nil
-                            }
-                        }
-                    )
-                ) { EmptyView() }
                 Spacer() // Push content to center vertically
                 
                 // --- Checkout Details Section --- NEW Simplified Version
@@ -183,9 +175,23 @@ struct ContentView: View {
                         switch result {
                         case .success(let (url, state)): // Destructure the tuple
                             print("Payment initiated, URL: \(url), State: \(state)")
-                            print("Setting paymentUrl to: \(url)")
-                            print("[DEBUG] Setting paymentUrl =", url)
-                            paymentUrl = url     // Set the URL to trigger navigation
+                            // Only load token.io domains in-app; open all others externally
+                            let urlString = url.absoluteString.lowercased()
+                            let tokenDomains: [String] = [
+                                "https://app.token.io",
+                                "https://app.beta.token.io",
+                                "https://app.sandbox.token.io",
+                                "https://app.dev.token.io"
+                            ]
+                            if tokenDomains.contains(where: { urlString.hasPrefix($0) }) {
+                                print("Loading in-app WebView: \(url)")
+                                paymentUrl = url
+                            } else {
+                                print("Opening external URL: \(url)")
+                                DispatchQueue.main.async {
+                                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                                }
+                            }
                         case .failure(let error):
                             // Basic error handling, consider showing an alert
                             print("Error initiating payment: \(error.localizedDescription)")
@@ -211,90 +217,148 @@ struct ContentView: View {
                 }
                 
                 Spacer() // Push content to center vertically
-                
-                // Background NavigationLink, triggered by paymentUrl change
-                NavigationLink(
-                    // Pass the URL obtained from the successful API call
-                    // Note: We need PaymentWebView to accept the URL now.
-                    destination: PaymentWebView(environment: selectedEnvironment, initialUrl: paymentUrl),
-                    isActive: Binding<Bool>( // Drive navigation from paymentUrl state
-                        get: { paymentUrl != nil },
-                        set: { isActive in
-                            if !isActive {
-                                paymentUrl = nil
-                            }
-                        }
-                                           )
-                ) { EmptyView() } // Invisible link
             }
+            // Register in-app WebView navigation inside the NavigationStack context
+            .navigationDestination(isPresented: Binding<Bool>( // Restore correct binding for webview
+                get: { paymentUrl != nil },
+                set: { if !$0 { paymentUrl = nil } } // Reset paymentUrl if dismissed
+            )) {
+                PaymentWebView(environment: selectedEnvironment, initialUrl: paymentUrl)
+            }
+            // Fallback result sheet for external flows
+            .sheet(isPresented: Binding<Bool>( // Inline binding for the sheet
+                get: { paymentCompletionHandler.paymentStatus != nil },
+                set: { show in
+                    if !show {
+                        // If sheet is dismissed, ensure status is cleared
+                        // only if it's not nil already (avoid infinite loop)
+                        if paymentCompletionHandler.paymentStatus != nil {
+                            paymentCompletionHandler.paymentStatus = nil
+                            print("[DEBUG][ContentView] Sheet dismissed by user (isPresented=false), setting paymentStatus = nil")
+                        }
+                    }
+                }
+            ), onDismiss: {
+                print("[DEBUG][ContentView] onDismiss called. Resetting handler.")
+                // Call reset within a closure
+                paymentCompletionHandler.reset()
+            }) {
+                // Content of the sheet
+                PaymentResultView(environment: selectedEnvironment)
+            }
+            // Reset state on returnToHome notification
             .onReceive(NotificationCenter.default.publisher(for: .returnToHome)) { _ in
-                print("[DEBUG] Received .returnToHome notification, setting paymentUrl = nil")
                 paymentUrl = nil
             }
-            .onChange(of: paymentCompletionHandler.paymentStatus) { newStatus in
-                print("[DEBUG] paymentCompletionHandler.paymentStatus changed to", String(describing: newStatus))
+            // Debug payment status changes
+            .onChange(of: paymentCompletionHandler.paymentStatus) { oldStatus, newStatus in
+                print("[DEBUG] paymentCompletionHandler.paymentStatus changed from \(String(describing: oldStatus)) to \(String(describing: newStatus))")
             }
-            
-        }
+        } // End NavigationStack
+        
     }
     
     // --- New View for Displaying Payment Result ---
     
-    
     // --- Payment Result View ---
     struct PaymentResultView: View {
-        @ObservedObject var paymentCompletionHandler: PaymentCompletionHandler
+        @EnvironmentObject var paymentCompletionHandler: PaymentCompletionHandler
         @Environment(\.dismiss) var dismiss // To close the sheet
+        let environment: ApiEnvironment // Receive the environment
         
         var body: some View {
-            VStack(spacing: 20) {
-                Spacer()
+            VStack {
+                // --- Loading Indicator ---
+                if paymentCompletionHandler.isCheckingStatus {
+                    ProgressView("Checking Status...")
+                        .padding(.vertical)
+                }
+                // --- End Loading Indicator ---
                 
-                // Icon based on status
-                Image(systemName: statusIcon)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 80, height: 80)
-                    .foregroundColor(statusColor)
-                
-                // Main status text
-                Text(statusTitle)
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                // Optional details/reason
-                if let reason = paymentCompletionHandler.statusReasonInformation, !reason.isEmpty {
-                    Text(reason)
-                        .font(.body)
-                        .foregroundColor(.gray)
+                Spacer(minLength: 40)
+                VStack(spacing: 20) {
+                    Image(systemName: statusIcon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 72, height: 72)
+                        .foregroundColor(statusColor)
+                    Text(statusTitle)
+                        .font(.title2)
+                        .fontWeight(.semibold)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
                 }
+                .padding(.bottom, 16)
                 
-                // Display other details if available
-                if paymentCompletionHandler.paymentStatus == .success {
-                    Text("Ref ID: \(paymentCompletionHandler.refId)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("Amount: \(paymentCompletionHandler.value) \(paymentCompletionHandler.currency)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                // --- Details Section ---
+                // Show details only when not checking status OR if already loaded
+                if !paymentCompletionHandler.isCheckingStatus || !paymentCompletionHandler.statusString.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Status:").fontWeight(.medium)
+                            Spacer()
+                            // Use the raw status string from API if available, otherwise use title
+                            Text(paymentCompletionHandler.statusString.isEmpty ? statusTitle : paymentCompletionHandler.statusString)
+                                .foregroundColor(.secondary)
+                        }
+                        if let reason = paymentCompletionHandler.statusReasonInformation, !reason.isEmpty {
+                            HStack {
+                                Text("Reason:").fontWeight(.medium)
+                                Spacer()
+                                Text(reason).foregroundColor(.secondary)
+                            }
+                        }
+                        HStack {
+                            Text("Amount:").fontWeight(.medium)
+                            Spacer()
+                            // Use updated amount/currency from handler
+                            Text("\(paymentCompletionHandler.value) \(paymentCompletionHandler.currency)")
+                                .foregroundColor(.secondary)
+                        }
+                        HStack {
+                            Text("Reference ID:").fontWeight(.medium)
+                            Spacer()
+                            // Use refId from handler
+                            Text(paymentCompletionHandler.refId)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .font(.body)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(14)
+                    .padding(.bottom, 24)
+                } else {
+                    // Optional: Add a placeholder or leave empty while loading initial details
                 }
+                // --- End Details Section ---
                 
                 Spacer()
-                
-                // Done button
                 Button("Done") {
-                    paymentCompletionHandler.reset() // Reset the state in the handler
-                    dismiss() // Close the sheet
-                    // Return to home by clearing navigation state
+                    paymentCompletionHandler.reset()
+                    dismiss()
                     NotificationCenter.default.post(name: .returnToHome, object: nil)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .padding(.bottom)
+                .padding(.bottom, 32)
             }
-            .padding()
+            .padding(.horizontal, 8)
+            .frame(maxWidth: 420)
+            .background(Color.clear)
+            // --- Add .onAppear to trigger polling ---
+            .onAppear {
+                // Ensure refId is populated before attempting to poll
+                if !paymentCompletionHandler.refId.isEmpty {
+                    print("[DEBUG] PaymentResultView appeared. Polling status for refId: \(paymentCompletionHandler.refId)")
+                    paymentCompletionHandler.pollPaymentStatus(environment: environment)
+                } else {
+                    print("[DEBUG] PaymentResultView appeared, but refId is empty. Polling skipped.")
+                    // Optionally, set a status indicating polling couldn't happen yet?
+                    // Or rely on handleIncomingURL's initial status.
+                }
+            }
+            // --- End .onAppear ---
         }
         
         // Helper computed properties for UI elements based on status

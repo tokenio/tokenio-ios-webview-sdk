@@ -33,9 +33,6 @@ struct PaymentWebView: View {
         // Apply modifiers directly to the ZStack
         .navigationTitle("Payment")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarItems(trailing: Button("Close") {
-            presentationMode.wrappedValue.dismiss()
-        })
         .alert(isPresented: $showError) {
             Alert(
                 title: Text("Error"),

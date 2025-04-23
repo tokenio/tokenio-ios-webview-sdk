@@ -19,8 +19,6 @@ struct WebView: UIViewRepresentable {
     private let progressObserver = ProgressObserver()
     
     func makeUIView(context: Context) -> WKWebView {
-        // Store the coordinator for later reference
-        let coordinator = context.coordinator
         // Configure WebView with enhanced settings for payment processing
         let configuration = WKWebViewConfiguration()
         
