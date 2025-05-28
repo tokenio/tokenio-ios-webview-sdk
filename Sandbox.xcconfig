@@ -1,0 +1,5 @@
+// Sandbox configuration
+PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.TokenTestiOS.sandbox
+DISPLAY_NAME = TokenTestiOS (Sandbox)
+
+// Add any sandbox-specific configurations below

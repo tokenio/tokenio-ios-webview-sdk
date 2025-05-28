@@ -5,7 +5,71 @@
 //
 
 import Foundation
+
+// MARK: - URLSessionProtocol
+protocol URLSessionProtocol {
+    func dataTask(with request: URLRequest, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) -> URLSessionDataTask
+    @available(iOS 15.0, *)
+    func data(for request: URLRequest) async throws -> (Data, URLResponse)
+}
+
+extension URLSession: URLSessionProtocol {}
+
+// MARK: - Logging Extensions
+private extension PaymentService {
+    func logRequest(_ request: URLRequest) {
+        print("\n==== TOKEN API REQUEST ====")
+        print("🌎 URL: \(request.url?.absoluteString ?? "N/A")")
+        print("🔑 Method: \(request.httpMethod ?? "N/A")")
+        
+        if let headers = request.allHTTPHeaderFields, !headers.isEmpty {
+            print("📋 Headers: \(headers)")
+        }
+        
+        if let body = request.httpBody,
+           let bodyString = String(data: body, encoding: .utf8) {
+            print("📝 Body: \(bodyString)")
+        }
+        
+        print("==== END REQUEST ====\n")
+    }
+    
+    func logResponse(_ data: Data?, _ response: URLResponse?, _ error: Error?) {
+        print("\n==== TOKEN API RESPONSE ====")
+        
+        if let httpResponse = response as? HTTPURLResponse {
+            print("🚦 Status Code: \(httpResponse.statusCode)")
+            
+            if let headers = httpResponse.allHeaderFields as? [String: Any], !headers.isEmpty {
+                print("📋 Headers: \(headers)")
+            }
+        } else if let error = error {
+            print("🚨 Error: \(error.localizedDescription)")
+        }
+        
+        if let data = data {
+            if let json = try? JSONSerialization.jsonObject(with: data),
+               let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
+               let prettyString = String(data: prettyData, encoding: .utf8) {
+                print("📝 Body: \(prettyString)")
+            } else if let string = String(data: data, encoding: .utf8) {
+                print("📝 Body: \(string)")
+            } else {
+                print("📦 No response body data.")
+            }
+        } else {
+            print("📦 No response data.")
+        }
+        
+        print("==== END RESPONSE ====\n")
+    }
+}
+
+// MARK: - Main Service
+
+import Foundation
 import CryptoKit
+import UIKit // For UIApplication
 
 struct PaymentResponse: Codable {
     let payment: Payment
@@ -131,31 +195,24 @@ struct PaymentStatusDetails {
 }
 
 class PaymentService {
-    static let shared = PaymentService() // Add shared instance for singleton access
-
-    init() {}
+    // MARK: - Properties
+    private let session: URLSessionProtocol
+    private let keychainProvider: KeychainProvider
     
-    private func logResponse(_ data: Data?, _ response: URLResponse?, _ error: Error?) {
-        print("\n==== TOKEN API RESPONSE ====")
-        if let error = error {
-            print("🚨 Error: \(error.localizedDescription)")
-        }
-        
-        if let httpResponse = response as? HTTPURLResponse {
-            print("🚦 Status Code: \(httpResponse.statusCode)")
-            print("📋 Headers: \(httpResponse.allHeaderFields)")
-        }
-        
-        if let data = data, let responseString = String(data: data, encoding: .utf8) {
-            print("📝 Body: \(responseString)")
-        } else if data != nil {
-            print("⚠️ Could not decode response body as UTF-8")
-        } else {
-            print("📦 No response body data.")
-        }
-        
-        print("==== END RESPONSE ====\n")
+    // MARK: - Mock Mode Support
+    private var isMockMode: Bool {
+        ProcessInfo.processInfo.arguments.contains("-useMockAPI")
     }
+    
+    // MARK: - Initialization
+    init(session: URLSessionProtocol = URLSession.shared, 
+         keychainProvider: KeychainProvider = DefaultKeychainProvider()) {
+        self.session = session
+        self.keychainProvider = keychainProvider
+    }
+    
+    // Shared instance for singleton access
+    static let shared = PaymentService()
     
     // Helper function to generate a secure random state string (URL-safe base64 encoded)
     private func generateRandomState() -> String {
@@ -223,9 +280,15 @@ class PaymentService {
         var request = URLRequest(url: endpointUrl)
         request.httpMethod = "POST"
 
-        let credentials = environment.apiKey
-        print("Loaded API Key: '\(credentials)'")
-        request.addValue("Basic \(credentials)", forHTTPHeaderField: "Authorization")
+        do {
+            let apiKey = try keychainProvider.getApiKey()
+            print("Loaded API Key: '\(apiKey)'")
+            request.addValue("Basic \(apiKey)", forHTTPHeaderField: "Authorization")
+        } catch {
+            print("Error loading API key: \(error)")
+            completion(.failure(PaymentServiceError.missingApiKey))
+            return
+        }
 
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("application/json", forHTTPHeaderField: "Accept")
@@ -241,6 +304,16 @@ class PaymentService {
             creditorAccountNumber: creditorAccountNumber
         )
 
+        // --- MOCK MODE ---
+        if isMockMode {
+            // Simulate a successful payment initiation with a fake redirect URL and state
+            let fakeUrl = URL(string: "https://app.sandbox.token.io/payment/redirect/mock-success")!
+            let fakeState = "mocked-state-1234"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                completion(.success((redirectUrl: fakeUrl, state: fakeState)))
+            }
+            return
+        }
         // Encode Body
         do {
             let encoder = JSONEncoder()
@@ -262,7 +335,7 @@ class PaymentService {
         print("==== END REQUEST ====\n")
 
         // Execute Data Task
-        let task = URLSession.shared.dataTask(with: request) { taskData, response, error in // Renamed data to taskData
+        let task = session.dataTask(with: request) { taskData, response, error in // Renamed data to taskData
             // Log Response
             self.logResponse(taskData, response, error) // Use taskData
 
@@ -343,53 +416,95 @@ class PaymentService {
         task.resume()
     }
     
-    // Modified to accept environment
+    @available(iOS 15.0, *)
     func getPaymentStatus(paymentId: String, environment: ApiEnvironment) async throws -> PaymentStatusDetails {
-        let statusURL = environment.baseUrl.appendingPathComponent("/v2/payments/\(paymentId)")
+        // --- MOCK MODE ---
+        if isMockMode {
+            // Return mock data for testing
+            return PaymentStatusDetails(
+                status: "execution_successful",
+                statusReasonInformation: "Payment completed successfully",
+                currency: "GBP",
+                value: "10.00",
+                refId: "MOCK_REF_123"
+            )
+        }
         
-        var request = URLRequest(url: statusURL)
+        // --- REAL API CALL ---
+        // 1. Get API Key from Keychain
+        let apiKey: String
+        do {
+            apiKey = try keychainProvider.getApiKey()
+            print("Loaded API Key: '\(apiKey)'")
+        } catch {
+            print("Error loading API key: \(error)")
+            throw PaymentServiceError.missingApiKey
+        }
+        
+        // 2. Construct URL
+        let baseUrl = environment.baseUrl
+        let urlString = "\(baseUrl)/payments/\(paymentId)"
+        
+        guard let url = URL(string: urlString) else {
+            throw PaymentServiceError.invalidUrl
+        }
+        
+        // 3. Create Request
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
-        // Set Headers using environment
-        request.addValue("Basic \(environment.apiKey)", forHTTPHeaderField: "Authorization")
-        request.addValue("application/json", forHTTPHeaderField: "Accept")
+        // 4. Add Headers
+        let authString = "\(apiKey):"
+        let authData = authString.data(using: .utf8)!
+        let base64AuthString = authData.base64EncodedString()
         
-        print("\n==== TOKEN API REQUEST (Get Status) ====")
-        print("Get Payment Status URL: \(request.url?.absoluteString ?? "N/A")")
-        print("Get Payment Status Headers: \(request.allHTTPHeaderFields ?? [:])")
-        print("==== END REQUEST ====\n")
+        request.setValue("Basic \(base64AuthString)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         
+        // Log the request
+        logRequest(request)
+        
+        // 5. Make the API Call
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(for: request)
             
-            // Log response
-            logResponse(data, response, nil) 
+            // Log the response
+            logResponse(data, response, nil)
             
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                let error = NSError(domain: "PaymentService", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to get payment status. Status code: \(statusCode)"])
-                print("Payment Status Error: \(error)")
-                throw error
+            // Check the HTTP status code
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw PaymentServiceError.invalidResponse
             }
             
-            // Decode using the PaymentStatusResponse struct
+            guard (200...299).contains(httpResponse.statusCode) else {
+                print("Payment Status Error: \(httpResponse.statusCode)")
+                
+                // Try to extract error details
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let errorMessage = json["error"] as? String {
+                    print("Error details: \(errorMessage)")
+                }
+                
+                throw PaymentServiceError.apiError("Failed to get payment status. Status code: \(httpResponse.statusCode)")
+            }
+            
+            // 6. Parse the response
             let decoder = JSONDecoder()
-            let paymentStatusResponse = try decoder.decode(PaymentStatusResponse.self, from: data)
+            let paymentResponse = try decoder.decode(PaymentResponse.self, from: data)
             
-            print("Successfully retrieved payment status: \(paymentStatusResponse.payment.status)")
-            
-            // Create and return the detailed status struct
-            let details = PaymentStatusDetails(
-                status: paymentStatusResponse.payment.status,
-                statusReasonInformation: paymentStatusResponse.payment.statusReasonInformation,
-                currency: paymentStatusResponse.payment.initiation.amount.currency,
-                value: paymentStatusResponse.payment.initiation.amount.value,
-                refId: paymentStatusResponse.payment.initiation.refId
+            // 7. Map to our simplified model
+            return PaymentStatusDetails(
+                status: paymentResponse.payment.status,
+                statusReasonInformation: paymentResponse.payment.statusReasonInformation,
+                currency: paymentResponse.payment.initiation.amount.currency,
+                value: paymentResponse.payment.initiation.amount.value,
+                refId: paymentResponse.payment.initiation.refId
             )
-            return details
             
+        } catch let error as DecodingError {
+            print("Decoding error: \(error)")
+            throw PaymentServiceError.decodingError("Failed to decode payment status response: \(error.localizedDescription)")
         } catch {
-            logResponse(nil, nil, error) // Log the error that occurred during the async call or decoding
             print("Error fetching or decoding payment status: \(error)")
             throw error
         }

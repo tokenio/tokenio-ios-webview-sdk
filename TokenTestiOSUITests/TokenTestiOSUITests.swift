@@ -23,13 +23,36 @@ final class TokenTestiOSUITests: XCTestCase {
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testPaymentSuccessFlow_withMockAPI() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("-useMockAPI")
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        // Fill out payment form (assuming default values are present, adjust selectors as needed)
+        let amountField = app.textFields["Amount"]
+        if amountField.exists {
+            amountField.tap()
+            amountField.clearAndEnterText(text: "10.00")
+        }
+
+        // Tap 'Pay by bank' button
+        let payButton = app.buttons["Pay by bank"]
+        XCTAssertTrue(payButton.waitForExistence(timeout: 2), "Pay by bank button should exist")
+        payButton.tap()
+
+        // Wait for mock redirect and status polling to complete
+        let successLabel = app.staticTexts["Payment Successful"]
+        let exists = successLabel.waitForExistence(timeout: 5)
+        XCTAssertTrue(exists, "Payment Successful UI should appear after mock payment flow")
     }
+
+    // Helper for clearing and entering text
+    // Add this as an extension for XCUIElement
+    // (You may want to move this to a shared test utility file)
+    // Usage: element.clearAndEnterText(text: "new text")
+    // If not allowed, you can inline this logic in the test
+    
+
 
     @MainActor
     func testLaunchPerformance() throws {
