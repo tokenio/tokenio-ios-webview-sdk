@@ -9,3 +9,7 @@
 
 # Configuration files
 Config/default.xcconfig
+
+# Test coverage reports
+coverage.html
+*.lcov
