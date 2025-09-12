@@ -173,6 +173,8 @@ struct ContentView: View {
                                                    creditorAccountNumber: an) { result in
                         isLoading = false
                         switch result {
+                        case .failure(let error):
+                            print("Error initiating payment: \(error.localizedDescription)")
                         case .success(let (url, state)): // Destructure the tuple
                             print("Payment initiated, URL: \(url), State: \(state)")
                             // Only load token.io domains in-app; open all others externally

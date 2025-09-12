@@ -1,5 +1,0 @@
-// Development configuration
-PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.TokenTestiOS.dev
-DISPLAY_NAME = TokenTestiOS (Dev)
-
-// Add any development-specific configurations below

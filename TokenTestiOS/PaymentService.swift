@@ -236,15 +236,15 @@ class PaymentService {
         
         // Generate the secure random state
         let state = generateRandomState()
-
+        print("=======remittanceInformationPrimary:=======: RP\(refId)");
         // Build the request using the generated state
         let request = PaymentRequest(
             initiation: PaymentRequest.Initiation(
                 bankId: nil, // Let user select bank in the flow
                 refId: refId, // Use the generated 8-char refId
                 flowType: "FULL_HOSTED_PAGES", // Use FULL_HOSTED_PAGES as requested
-                remittanceInformationPrimary: "RP/\(refId)",
-                remittanceInformationSecondary: "RS/\(refId)",
+                remittanceInformationPrimary: "RP\(refId)",
+                remittanceInformationSecondary: "RS\(refId)",
                 amount: PaymentRequest.Initiation.Amount(
                     value: amountValue,
                     currency: currency
@@ -280,15 +280,15 @@ class PaymentService {
         var request = URLRequest(url: endpointUrl)
         request.httpMethod = "POST"
 
-        do {
-            let apiKey = try keychainProvider.getApiKey()
-            print("Loaded API Key: '\(apiKey)'")
-            request.addValue("Basic \(apiKey)", forHTTPHeaderField: "Authorization")
-        } catch {
-            print("Error loading API key: \(error)")
+        let apiKey = environment.apiKey
+        guard !apiKey.isEmpty else {
+            print("❌ API key is empty — cannot initiate payment")
             completion(.failure(PaymentServiceError.missingApiKey))
             return
         }
+        print("✅ Loaded API Key from environment: '\(apiKey)'")
+        request.addValue("Basic \(apiKey)", forHTTPHeaderField: "Authorization")
+
 
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("application/json", forHTTPHeaderField: "Accept")

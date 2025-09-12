@@ -1,15 +1,15 @@
 import Foundation
 
-extension Bundle {
-    var apiKey: String? {
-        // 1. Prefer environment variable for local/test/dev
-        if let envKey = ProcessInfo.processInfo.environment["API_KEY"], !envKey.isEmpty {
-            return envKey
-        }
-        // 2. Fallback to Info.plist
-        return object(forInfoDictionaryKey: "API_KEY") as? String
-    }
-}
+// extension Bundle {
+//     var apiKey: String? {
+//         // 1. Prefer environment variable for local/test/dev
+//         if let envKey = ProcessInfo.processInfo.environment["API_KEY"], !envKey.isEmpty {
+//             return envKey
+//         }
+//         // 2. Fallback to Info.plist
+//         return object(forInfoDictionaryKey: "API_KEY") as? String
+//     }
+// }
 // Define the available API environments
 enum ApiEnvironment: String, CaseIterable, Identifiable {
     case dev = "DEV"       // Example DEV environment
@@ -31,8 +31,8 @@ enum ApiEnvironment: String, CaseIterable, Identifiable {
         }
     }
 
-    // API Key for each environment is now read securely from Info.plist (set by build configuration)
-    var apiKey: String {
-        return Bundle.main.apiKey ?? ""
+   var apiKey: String {
+        let key = "API_KEY_\(rawValue)" // e.g. "API_KEY_DEV"
+        return Bundle.main.object(forInfoDictionaryKey: key) as? String ?? ""
     }
 }

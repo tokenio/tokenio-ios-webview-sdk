@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4CD7C6F22E16A6BB005930BC /* default.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */; };
 		99329B172DAFB70700197460 /* Dev.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 99329B162DAFB70700197460 /* Dev.xcconfig */; };
 		99329B1D2DAFB72C00197460 /* Sandbox.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 99329B1C2DAFB72C00197460 /* Sandbox.xcconfig */; };
 		99329B232DAFB75F00197460 /* Beta.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 99329B222DAFB75F00197460 /* Beta.xcconfig */; };
@@ -30,6 +31,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4CD7C6F12E16A6BB005930BC /* default.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = default.xcconfig; sourceTree = "<group>"; };
 		99329B162DAFB70700197460 /* Dev.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Dev.xcconfig; sourceTree = "<group>"; };
 		99329B1C2DAFB72C00197460 /* Sandbox.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Sandbox.xcconfig; sourceTree = "<group>"; };
 		99329B222DAFB75F00197460 /* Beta.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Beta.xcconfig; sourceTree = "<group>"; };
@@ -42,7 +44,6 @@
 		99545FF42DA81AB9002D1211 /* Exceptions for "TokenTestiOS" folder in "TokenTestiOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Assets.xcassets,
 				Info.plist,
 			);
 			target = 99545FBE2DA7BDC2002D1211 /* TokenTestiOS */;
@@ -105,6 +106,7 @@
 				99329B162DAFB70700197460 /* Dev.xcconfig */,
 				99329B1C2DAFB72C00197460 /* Sandbox.xcconfig */,
 				99329B222DAFB75F00197460 /* Beta.xcconfig */,
+				4CD7C6F12E16A6BB005930BC /* default.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -241,6 +243,7 @@
 				99329B1D2DAFB72C00197460 /* Sandbox.xcconfig in Resources */,
 				99329B172DAFB70700197460 /* Dev.xcconfig in Resources */,
 				99329B232DAFB75F00197460 /* Beta.xcconfig in Resources */,
+				4CD7C6F22E16A6BB005930BC /* default.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -300,7 +303,7 @@
 /* Begin XCBuildConfiguration section */
 		99329B182DAFB71500197460 /* Debug sandbox */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B1C2DAFB72C00197460 /* Sandbox.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -365,13 +368,14 @@
 		};
 		99329B192DAFB71500197460 /* Debug sandbox */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B1C2DAFB72C00197460 /* Sandbox.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = 734Q44J6QX;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -381,12 +385,13 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOS;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tokenio.TokenTestiOS.sandbox;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -396,17 +401,17 @@
 		};
 		99329B1A2DAFB71500197460 /* Debug sandbox */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B1C2DAFB72C00197460 /* Sandbox.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = D9W7Q6N2X9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOSTests;
+				PRODUCT_BUNDLE_IDENTIFIER = tokenwebviewapp.TokenTestiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -417,15 +422,16 @@
 		};
 		99329B1B2DAFB71500197460 /* Debug sandbox */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B162DAFB70700197460 /* Dev.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = D9W7Q6N2X9;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOSUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = tokenwebviewapp.TokenTestiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -434,9 +440,9 @@
 			};
 			name = "Debug sandbox";
 		};
-		99329B1E2DAFB74800197460 /* Debug sandbox copy */ = {
+		99329B1E2DAFB74800197460 /* Debug beta */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B222DAFB75F00197460 /* Beta.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -497,17 +503,18 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
-			name = "Debug sandbox copy";
+			name = "Debug beta";
 		};
-		99329B1F2DAFB74800197460 /* Debug sandbox copy */ = {
+		99329B1F2DAFB74800197460 /* Debug beta */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B222DAFB75F00197460 /* Beta.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = 734Q44J6QX;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -517,62 +524,64 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOS;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tokenio.TokenTestiOS.beta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
-			name = "Debug sandbox copy";
+			name = "Debug beta";
 		};
-		99329B202DAFB74800197460 /* Debug sandbox copy */ = {
+		99329B202DAFB74800197460 /* Debug beta */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B222DAFB75F00197460 /* Beta.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = D9W7Q6N2X9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOSTests;
+				PRODUCT_BUNDLE_IDENTIFIER = tokenwebviewapp.TokenTestiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TokenTestiOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TokenTestiOS";
 			};
-			name = "Debug sandbox copy";
+			name = "Debug beta";
 		};
-		99329B212DAFB74800197460 /* Debug sandbox copy */ = {
+		99329B212DAFB74800197460 /* Debug beta */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B222DAFB75F00197460 /* Beta.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = D9W7Q6N2X9;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOSUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = tokenwebviewapp.TokenTestiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = TokenTestiOS;
 			};
-			name = "Debug sandbox copy";
+			name = "Debug beta";
 		};
 		99545FE02DA7BDC4002D1211 /* Debug dev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B162DAFB70700197460 /* Dev.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -637,6 +646,7 @@
 		};
 		99545FE12DA7BDC4002D1211 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -694,13 +704,14 @@
 		};
 		99545FE32DA7BDC4002D1211 /* Debug dev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B162DAFB70700197460 /* Dev.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = 734Q44J6QX;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -710,12 +721,13 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOS;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tokenio.TokenTestiOS.dev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -725,12 +737,14 @@
 		};
 		99545FE42DA7BDC4002D1211 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = 734Q44J6QX;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -740,12 +754,13 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOS;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tokenio.TokenTestiOS.beta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -755,17 +770,17 @@
 		};
 		99545FE62DA7BDC4002D1211 /* Debug dev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B162DAFB70700197460 /* Dev.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = D9W7Q6N2X9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOSTests;
+				PRODUCT_BUNDLE_IDENTIFIER = tokenwebviewapp.TokenTestiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -776,16 +791,17 @@
 		};
 		99545FE72DA7BDC4002D1211 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = D9W7Q6N2X9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOSTests;
+				PRODUCT_BUNDLE_IDENTIFIER = tokenwebviewapp.TokenTestiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -796,15 +812,16 @@
 		};
 		99545FE92DA7BDC4002D1211 /* Debug dev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 99329B162DAFB70700197460 /* Dev.xcconfig */;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = D9W7Q6N2X9;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOSUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = tokenwebviewapp.TokenTestiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -815,14 +832,16 @@
 		};
 		99545FEA2DA7BDC4002D1211 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4CD7C6F12E16A6BB005930BC /* default.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 75G28274S2;
+				DEVELOPMENT_TEAM = D9W7Q6N2X9;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = JoshCodesNow.TokenTestiOSUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = tokenwebviewapp.TokenTestiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -839,7 +858,7 @@
 			buildConfigurations = (
 				99545FE02DA7BDC4002D1211 /* Debug dev */,
 				99329B182DAFB71500197460 /* Debug sandbox */,
-				99329B1E2DAFB74800197460 /* Debug sandbox copy */,
+				99329B1E2DAFB74800197460 /* Debug beta */,
 				99545FE12DA7BDC4002D1211 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -850,7 +869,7 @@
 			buildConfigurations = (
 				99545FE32DA7BDC4002D1211 /* Debug dev */,
 				99329B192DAFB71500197460 /* Debug sandbox */,
-				99329B1F2DAFB74800197460 /* Debug sandbox copy */,
+				99329B1F2DAFB74800197460 /* Debug beta */,
 				99545FE42DA7BDC4002D1211 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -861,7 +880,7 @@
 			buildConfigurations = (
 				99545FE62DA7BDC4002D1211 /* Debug dev */,
 				99329B1A2DAFB71500197460 /* Debug sandbox */,
-				99329B202DAFB74800197460 /* Debug sandbox copy */,
+				99329B202DAFB74800197460 /* Debug beta */,
 				99545FE72DA7BDC4002D1211 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -872,7 +891,7 @@
 			buildConfigurations = (
 				99545FE92DA7BDC4002D1211 /* Debug dev */,
 				99329B1B2DAFB71500197460 /* Debug sandbox */,
-				99329B212DAFB74800197460 /* Debug sandbox copy */,
+				99329B212DAFB74800197460 /* Debug beta */,
 				99545FEA2DA7BDC4002D1211 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
