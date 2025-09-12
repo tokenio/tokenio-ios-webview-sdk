@@ -1,3 +1,11 @@
-Config/Beta.xcconfig
-Config/Dev.xcconfig
-Config/Sandbox.xcconfig
+# macOS
+**/.DS_Store
+.DS_Store
+
+# Xcode user data
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Configuration files
+Config/default.xcconfig
