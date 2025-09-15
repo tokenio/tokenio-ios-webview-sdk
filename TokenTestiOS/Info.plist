@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+	<key>API_KEY_DEV</key>
+	<string>$(API_KEY_DEV)</string>
+	<key>API_KEY_SANDBOX</key>
+	<string>$(API_KEY_SANDBOX)</string>
+	<key>API_KEY_BETA</key>
+	<string>$(API_KEY_BETA)</string>
+
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.yourcompany.tokentestios.payments</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>paymentdemoapp</string>
+			</array>
+		</dict>
+		<dict/>
+	</array>
+</dict>
+</plist>

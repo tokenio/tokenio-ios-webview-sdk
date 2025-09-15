@@ -1,0 +1,15 @@
+# macOS
+**/.DS_Store
+.DS_Store
+
+# Xcode user data
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Configuration files
+Config/default.xcconfig
+
+# Test coverage reports
+coverage.html
+*.lcov
