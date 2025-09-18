@@ -1,499 +1,494 @@
-# TokenTestiOS SDK Integration Guide
-This guide will help you quickly integrate the TokenTestiOS payment SDK into your own iOS app using an **in-app WebView** flow.
+# Token.io WebView Integration for iOS
 
-## Quick Start
-1. Add the SDK files (`PaymentService.swift`, `PaymentWebView.swift`, `PaymentCompletionHandler.swift`) to your project.
-2. Register your custom callback URL scheme (e.g., `paymentdemoapp://`) in your app's Info.plist.
-3. Implement `PaymentCompletionHandler` as a `@StateObject` in your main `App` struct and inject it into your view hierarchy using `.environmentObject()`.
-4. Add `.onOpenURL` to your main app entry point (`WindowGroup` or `Scene`) to handle callbacks.
-5. In your payment initiation view (e.g., `ContentView`), prepare payment details and call `PaymentService.shared.initiatePayment` within a `Task`.
-6. Store the returned `redirectUrl` in a `@State` variable.
-7. Use `.navigationDestination` (within a `NavigationStack`) tied to this `@State` variable to present the `PaymentWebView`.
-8. Handle the final payment result in your callback handler (`PaymentCompletionHandler`), typically by observing its published properties to update the UI (e.g., show a result sheet).
+This guide shows you how to integrate Token.io's web-based payment flows into your existing iOS payment interface using a secure WebView implementation.
 
-## Overview
-The SDK simplifies initiating payments, presenting the payment provider's interface within your app using a secure WebView, handling callbacks, and retrieving payment results.
+**Perfect for developers who already have a payment interface and just need to launch Token.io's web app securely.**
 
-## Core Components
+---
 
-These are the essential files and concepts you'll work with:
+## 📋 Table of Contents
 
-1.  **`PaymentService.swift`**: Manages communication with the payment provider's API (e.g., Token.io).
-    *   `initiatePayment`: Starts the payment process, requiring details like amount, currency, creditor info, callback URL, and a CSRF state. Returns the redirect URL.
-    *   `getPaymentStatus`: Checks the status of an existing payment using its ID.
-    *   Includes the `ApiEnvironment` enum for selecting different API endpoints (dev, sandbox, beta). It also handles API key retrieval via a `Bundle` extension.
-    *   Includes `PaymentRequest`, `PaymentResponse`, and `PaymentStatusResponse` structs for encoding/decoding API data.
-2.  **`PaymentWebView.swift`**: A SwiftUI `View` that wraps a `WKWebView` (using the internal `PaymentWebViewLoader` which is a `UIViewRepresentable`).
-    *   It's presented using SwiftUI's navigation system (e.g., `.navigationDestination` within a `NavigationStack`).
-    *   Loads the payment URL provided by `PaymentService`.
-    *   Handles WebView navigation, delegates actions, and manages loading/error/completion states shown to the user.
-    *   Includes a `Coordinator` (`WKNavigationDelegate`, `WKUIDelegate`) to intercept navigation, handle callbacks (by detecting the custom scheme), and manage external app redirects (like bank apps).
-3.  **`PaymentCompletionHandler.swift`**: An `ObservableObject` class responsible for:
-    *   Receiving the callback URL via the app's `.onOpenURL`.
-    *   Storing an `expectedState` for CSRF validation.
-    *   Parsing the URL parameters (e.g., `payment-id`, `state`) from the callback.
-    *   Validating the received state against the `expectedState`.
-    *   Calling `pollPaymentStatus` to fetch the final payment outcome from the API.
-    *   Publishing the final payment status (e.g., `.success`, `.failure`, `.pending`) and details for the UI to react to.
-4.  **`Bundle+ApiKey.swift` (or similar extension, currently integrated in `PaymentService.swift`)**: Provides secure access to the API Key, first checking the `API_KEY` environment variable, then falling back to the app's `Info.plist`.
-5.  **`YourAppApp.swift` (e.g., `TokenTestiOSApp.swift`)**: Your main SwiftUI `App` struct. This is where you'll:
-    *   Initialize `PaymentCompletionHandler` as a `@StateObject`.
-    *   Attach the `.onOpenURL` modifier to your main `WindowGroup` or `Scene`.
-    *   Inject `PaymentCompletionHandler` into your view hierarchy using `.environmentObject()`.
-6.  **Your UI View (e.g., `ContentView.swift`)**: The view where the user initiates the payment. It will typically:
-    *   Wrap content in a `NavigationStack`.
-    *   Have access to `PaymentCompletionHandler` via `@EnvironmentObject`.
-    *   Contain UI elements (like a "Pay" button) and state variables (`@State`) to hold payment details (amount, currency, etc.) and the redirect URL obtained from `initiatePayment`.
-    *   Call `PaymentService.shared.initiatePayment` within a `Task`.
-    *   Update the `@State` variable holding the redirect URL upon success.
-    *   Use `.navigationDestination(isPresented: ...)` bound to the redirect URL state variable to present `PaymentWebView`.
-    *   Present a result view (like `PaymentResultView`) based on the status published by `PaymentCompletionHandler` (often via `.sheet` triggered by changes in the handler's status).
-7.  **Custom URL Scheme**: Essential for the payment provider/bank to redirect the user back to your app after authentication.
+1. [Quick Overview](#quick-overview)
+2. [What You Need](#what-you-need)
+3. [WebView Components](#webview-components)
+4. [Integration Steps](#integration-steps)
+5. [Launching Token.io Web App](#launching-tokenio-web-app)
+6. [Handling Payment Results](#handling-payment-results)
+7. [Troubleshooting WebView Issues](#troubleshooting-webview-issues)
 
-## Prerequisites
-- iOS app targeting iOS 15.0+ (due to `NavigationStack` usage, adjust if using older navigation like `NavigationView`)
-- Add the required SDK source files (`PaymentService.swift`, `PaymentWebView.swift`, `PaymentCompletionHandler.swift`) to your project.
-- Xcode: Latest stable version recommended.
-- Valid payment provider API credentials (API Key).
+---
 
-## Secure API Key Storage
-> **Important:** Never store API keys directly in your source code or commit them to version control.
+## 🎯 Quick Overview
 
-This project uses a `Bundle` extension (found within `PaymentService.swift`) to retrieve the API Key:
+If you already have a payment interface, you only need to:
 
-1.  **Environment Variable (Recommended for Dev/CI):** Set an environment variable named `API_KEY` in your Xcode scheme's "Run" arguments (Edit Scheme > Run > Arguments > Environment Variables) or your CI environment. The code prioritizes this.
-    ```
-    API_KEY=your-api-key-here
-    ```
-2.  **Info.plist (Fallback):** Add a key named `API_KEY` to your target's `Info.plist` file with the API key as its string value. Use this for release builds, potentially managing different Plist files per configuration or using build scripts to populate the value.
+1. **Add a secure WebView component** to launch Token.io's web app
+2. **Handle payment callbacks** from the web app back to your app
+3. **Process payment results** in your existing flow
 
-```swift
-// Example from PaymentService.swift
-extension Bundle {
-    var apiKey: String {
-        // 1. Prefer environment variable
-        if let envKey = ProcessInfo.processInfo.environment["API_KEY"], !envKey.isEmpty {
-            return envKey
-        }
-        // 2. Fallback to Info.plist
-        return object(forInfoDictionaryKey: "API_KEY") as? String ?? "" // Return empty string if not found
-    }
-}
+**⚠️ Security First:**
+> Use the provided WebView implementation - it handles security, SSL certificates, and proper callback routing that a basic WebView cannot.
 
-// Usage within PaymentService for headers:
-request.addValue("Basic \(environment.apiKey)", forHTTPHeaderField: "Authorization")
+---
+
+## 🛠️ What You Need
+
+Just **3 core files** and **2 simple steps**:
+
+### Files to Copy:
+1. **`PaymentService.swift`** - Handles Token.io API communication
+2. **`PaymentWebView.swift`** - The secure WebView that launches Token.io
+3. **`PaymentCompletionHandler.swift`** - Handles payment callbacks and results
+
+### Steps:
+1. **Add custom URL scheme to your Info.plist**
+2. **Launch WebView from your existing payment flow**
+
+That's it! 🎉
+
+---
+
+## 📱 WebView Components
+
+### Core WebView Files You Need:
+
+```
+📁 From this demo project:
+├── PaymentService.swift              # Token.io API Service
+├── PaymentWebView.swift              # Main WebView Component
+├── PaymentCompletionHandler.swift    # Callback Handler
+└── Configuration.swift               # API Environment Config
 ```
 
-## WebView Domain Allowlist & App Redirects
-### Domain Allowlist:
+**What each file does:**
+- **`PaymentService`**: Communicates with Token.io API to create payment sessions
+- **`PaymentWebView`**: Secure SwiftUI WebView that loads Token.io's web app
+- **`PaymentCompletionHandler`**: Intercepts payment success/failure callbacks
+- **`Configuration`**: Manages API environments (sandbox, beta, production)
 
-The PaymentWebView's Coordinator contains a set of allowedDomains. Only URLs matching these domains (and standard http/https) will load within the WebView. This prevents unexpected or malicious redirects.
+---
 
-- Ensure your payment provider's web flow domains (e.g., https://app.token.io, https://app.sandbox.token.io, etc.) are included.
-- Other domains will attempt to open externally (Safari/other apps).
+## ⚡ Integration Steps
 
-### App-to-App Redirects:
+### Step 1: Add the WebView Files
 
-The Coordinator also checks for specific URL schemes known to belong to banking apps (e.g., monzo://, hsbc://). If detected:
+Copy these 4 files to your Xcode project:
+- `PaymentService.swift`
+- `PaymentWebView.swift`
+- `PaymentCompletionHandler.swift`
+- `Configuration.swift`
 
-- Navigation inside the WebView is cancelled.
-- The app attempts to open the URL using UIApplication.shared.open.
-- If the specific app isn't installed or the OS doesn't allow the redirect, it may fallback to Safari or show an error.
+### Step 2: Configure Custom URL Scheme
 
-## Integration Steps
-1. Add SDK Files:
+Add to your `Info.plist`:
 
-Copy PaymentService.swift, PaymentWebView.swift, and PaymentCompletionHandler.swift into your Xcode project.
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLName</key>
+        <string>com.yourcompany.yourapp.payment</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>yourapp</string>
+        </array>
+    </dict>
+</array>
+```
 
-2. Implement PaymentCompletionHandler:
+### Step 3: Set Up Payment Handler in Your App
 
-Ensure your PaymentCompletionHandler.swift matches the structure provided in the sample project, including:
-
-- Published properties for status and details (paymentStatus, statusString, etc.).
-- State properties (refId, expectedState, isCheckingStatus).
-- handleIncomingURL method with URL parsing and state validation logic.
-- pollPaymentStatus method with API call logic (using Basic Auth and PaymentStatusResponse decoding).
-- reset method to clear state.
-
-3. Configure Custom URL Scheme:
-
-- Choose a unique URL scheme (e.g., myapp-payment).
-- Register it in your target's Info.plist under URL Types:
-    - Identifier: com.yourcompany.yourapp.payment (or similar unique identifier)
-    - URL Schemes: paymentdemoapp (replace with your chosen scheme)
-
-4. Add .onOpenURL Handler:
-
-Attach the .onOpenURL modifier to your main WindowGroup (or Scene) to receive the callback URL:
+Update your main App struct:
 
 ```swift
 @main
 struct YourApp: App {
-    @StateObject var paymentCompletionHandler = PaymentCompletionHandler()
+    @StateObject private var paymentHandler = PaymentCompletionHandler()
 
-    var body: some Scene {
-        WindowGroup {
-            ContentView() // Your main view
-                .environmentObject(paymentCompletionHandler)
-                .onOpenURL { url in
-                    // Pass the URL to the handler
-                    paymentCompletionHandler.handleIncomingURL(url)
-                }
-        }
-    }
-}
-```
-
-5. Initiate Payment and Present WebView:
-
-In your view (e.g., ContentView), setup state variables and the payment initiation logic:
-
-```swift
-struct ContentView: View {
-    @EnvironmentObject var paymentCompletionHandler: PaymentCompletionHandler
-    @State private var selectedEnvironment: ApiEnvironment = .sandbox // Or your default
-    @State private var paymentUrl: URL? = nil // Holds the redirect URL from API
-    @State private var isLoading: Bool = false
-    // ... other state vars for amount, currency etc.
-
-    var body: some View {
-        NavigationStack { // Essential for .navigationDestination
-            VStack {
-                // ... Your UI elements for amount, currency selection ...
-
-                Button("Pay Now") {
-                    initiatePaymentFlow()
-                }
-                .disabled(isLoading)
-
-                if isLoading { ProgressView("Initiating...") }
-
-                Spacer()
-            }
-            .navigationTitle("Checkout")
-            // **** This presents the WebView when paymentUrl is set ****
-            .navigationDestination(isPresented: Binding<Bool>(
-                get: { paymentUrl != nil },
-                set: { if !$0 { paymentUrl = nil } } // Reset on dismiss/back
-            )) {
-                // Pass the URL and environment to the WebView
-                // Ensure PaymentCompletionHandler is also available via .environmentObject
-                PaymentWebView(environment: selectedEnvironment, initialUrl: paymentUrl)
-            }
-            // Example: Show result sheet based on handler status
-            .sheet(isPresented: Binding<Bool>( /* ... Binding logic based on paymentCompletionHandler.paymentStatus ... */ )) {
-                PaymentResultView(environment: selectedEnvironment)
-                    .environmentObject(paymentCompletionHandler) // Pass handler
-            }
-            // ... other modifiers ...
-        }
-    }
-
-    // Helper function to generate a secure random string
-    func generateRandomState() -> String {
-        // Use a cryptographically secure random generator
-        var randomBytes = [UInt8](repeating: 0, count: 32)
-        let status = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
-        guard status == errSecSuccess else {
-            // Handle error appropriately, fallback to simpler method for non-critical cases if needed
-            print("Error generating secure random bytes: \(status)")
-            return UUID().uuidString // Fallback, less secure
-        }
-        return Data(randomBytes).base64URLEncodedString() // Use URL-safe Base64
-    }
-
-
-    func initiatePaymentFlow() {
-        isLoading = true
-        // 1. Generate Secure State (CSRF protection)
-        let state = generateRandomState()
-        paymentCompletionHandler.expectedState = state // Pass to handler for validation
-
-        // 2. Prepare payment details from UI state
-        let amountValue = "1.00" // Get from @State
-        let currency = "GBP" // Get from @State
-        let callbackUrl = "paymentdemoapp://payment-complete" // Use YOUR scheme
-        // ... get other details like creditor info ...
-        let creditorName = "Merchant Name"
-        let creditorSortCode = "123456" // Example
-        let creditorAccountNumber = "98765432" // Example
-        let localInstrument = "FASTER_PAYMENTS" // Example
-
-        // 3. Call PaymentService within a Task
-        Task {
-            do {
-                let (redirectUrl, _) = try await PaymentService.shared.initiatePayment(
-                    environment: selectedEnvironment,
-                    currency: currency,
-                    amountValue: amountValue,
-                    localInstrument: localInstrument,
-                    creditorName: creditorName,
-                    creditorIBAN: nil, // Provide if needed
-                    creditorSortCode: creditorSortCode,
-                    creditorAccountNumber: creditorAccountNumber,
-                    remittancePrimary: "Invoice 123",
-                    remittanceSecondary: "",
-                    callbackUrl: callbackUrl,
-                    state: state // Pass the generated state
-                )
-                // 4. Update state to trigger navigation to PaymentWebView
-                self.paymentUrl = redirectUrl
-                self.isLoading = false // Stop loading indicator
-            } catch {
-                // TODO: Handle error (show alert, log, etc.)
-                print("Error initiating payment: \(error)")
-                self.isLoading = false // Stop loading indicator
-                // Optionally show an error alert to the user
-            }
-        }
-    }
-}
-
-// Helper extension for URL-safe Base64 encoding (can be placed globally or in PaymentService)
-extension Data {
-    func base64URLEncodedString() -> String {
-        return self.base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "") // Remove padding
-    }
-}
-```
-
-6. Handle Payment Result:
-
-Observe changes in paymentCompletionHandler.paymentStatus in your UI (e.g., ContentView or a dedicated PaymentResultView) to display the final outcome (success, failure, details) to the user, often presented in a sheet or overlay.
-
-## CSRF Protection (Crucial)
-- Generate State: Before calling initiatePayment, generate a unique, cryptographically secure random string (see generateRandomState() example above).
-- Pass State: Include this string in the state parameter of the initiatePayment call.
-- Store State: Give the same generated state string to your PaymentCompletionHandler (e.g., paymentCompletionHandler.expectedState = state).
-- Verify State: In PaymentCompletionHandler.handleIncomingURL, extract the state parameter from the incoming callback URL and strictly compare it to the expectedState. Abort the process if they do not match.
-
-**Why?** This prevents attackers from tricking your app into processing a payment result that didn't originate from a flow initiated by the current user session.
-
-## Final Integration Checklist
-[ ] Added SDK files (PaymentService.swift, PaymentWebView.swift, PaymentCompletionHandler.swift) to project.
-[ ] Registered custom callback URL scheme in Info.plist.
-[ ] Implemented PaymentCompletionHandler as @StateObject and injected via .environmentObject.
-[ ] Implemented .onOpenURL handler in main App struct.
-[ ] Implemented secure state generation for CSRF protection.
-[ ] Passed generated state to initiatePayment and PaymentCompletionHandler.
-[ ] Verified state matching in handleIncomingURL.
-[ ] Implemented payment initiation logic calling PaymentService.initiatePayment with correct parameters.
-[ ] Used .navigationDestination (or similar SwiftUI presentation) bound to the redirect URL state to present PaymentWebView.
-[ ] Handled final payment results by observing PaymentCompletionHandler.
-[ ] Configured API Key storage securely (environment variable or Info.plist).
-[ ] Tested the full in-app payment flow.
-[ ] Reviewed WebView domain allowlist and external app redirect schemes.
-
-1.  **`PaymentService.swift`**: Manages communication with the payment provider's API (e.g., Token.io) to initiate payments (`initiatePayment`) and check their status (`getPaymentStatus`). Requires configuration (see `Configuration.swift`).
-2.  **`PaymentWebView.swift`**: A SwiftUI `UIViewRepresentable` view that wraps a `WKWebView`. It loads the payment URL provided by `PaymentService`, handles navigation (including detecting your custom URL scheme), and delegates actions to its `Coordinator`.
-    *   **`Coordinator` (within `PaymentWebView.swift`)**: Acts as the `WKNavigationDelegate` and `WKUIDelegate`. It intercepts navigation attempts, specifically looking for your custom URL scheme to hand off the redirect back to the OS.
-3.  **`PaymentCompletionHandler.swift` (Create this file)**: An `ObservableObject` class responsible for:
-    *   Receiving the callback URL via the app's `.onOpenURL`.
-    *   Parsing the URL parameters (e.g., `payment-id`, `state`).
-    *   Calling `PaymentService.getPaymentStatus` to verify the payment outcome.
-    *   Publishing the final payment status (e.g., `.success`, `.failure`, `.pending`) for the UI to react to.
-4.  **`Configuration.swift`**: Defines API environments (`ApiEnvironment` enum) and holds base URLs and potentially API keys (use secure storage for production keys!).
-5.  **`YourAppApp.swift` (e.g., `TokenTestiOSApp.swift`)**: Your main SwiftUI `App` struct. This is where you'll:
-    *   Initialize `PaymentCompletionHandler` as a `@StateObject`.
-    *   Attach the `.onOpenURL` modifier to your main `WindowGroup` to receive the callback URL.
-    *   Inject `PaymentCompletionHandler` into your view hierarchy using `.environmentObject()`.
-6.  **Your UI View (e.g., `ContentView.swift`)**: The view where the user initiates the payment. It will typically:
-    *   Have access to `PaymentCompletionHandler` via `@EnvironmentObject`.
-    *   Contain UI elements (like a "Pay" button).
-    *   Call `PaymentService.initiatePayment`.
-    *   Use the resulting URL to present the `PaymentWebView` (e.g., via `NavigationLink` or `.sheet`).
-    *   Present a result view (like `PaymentResultView`) based on the status published by `PaymentCompletionHandler`.
-7.  **Custom URL Scheme**: Essential for the payment provider/bank to redirect the user back to your app after authentication.
-
-## Prerequisites
-- iOS app targeting iOS 14.0+
-- Add the SDK module or source files to your project
-- Add required dependencies (see below)
-- Xcode: Latest stable version recommended
-- Valid payment provider API credentials
-
-## Secure API Key Storage
-> **Important:** Never store API keys directly in your source code or commit them to version control.
->
-> 1. Create a `.xcconfig` file for each environment (e.g., `Config/Sandbox.xcconfig`) and add your API key:
->    ```
->    API_KEY=your-sandbox-api-key-here
->    ```
-> 2. Link each `.xcconfig` file to the appropriate build configuration in Xcode.
-> 3. In your `Info.plist`, add a key named `API_KEY` with the value `$(API_KEY)`.
-> 4. The SDK will read the API key from `Info.plist` at runtime.
->
-> See `Configuration.swift` for details.
-
-## Integration Steps
-
-> **Note:**
-> When a payment flow requires opening a bank app and the app is not installed, the SDK will automatically open the bank’s authentication page in the device’s default browser (Safari). This ensures compatibility with banks that do not allow authentication within in-app browsers.
-
-> **Important:**
-> The SDK only allows navigation within the in-app WebView for URLs belonging to a specific set of allowed merchant/payment provider domains.
-> - All other http(s) URLs—including bank authentication and external pages—will be automatically opened in the device’s default browser (Safari).
-> - **You must update the `allowedDomains` set in `PaymentWebView.swift` to include your merchant and payment provider domains.**
-> - For example, to support all Token environments, your allow list should include:
->   - `https://app.token.io`
->   - `https://app.dev.token.io`
->   - `https://app.sandbox.token.io`
->   - `https://app.beta.token.io`
-> - Any domain not in this list will be opened externally for security and compatibility.
->
-> **App-to-App Redirects:**
-> If a payment or bank app is installed on the user's device, the SDK will automatically open that app via its custom URL scheme for authentication or authorization. If the app is not installed, the SDK will fall back to opening the authentication page in the device's default browser (Safari). This ensures a seamless and secure user experience.
-
-**1. Add SDK Files:**
-
-*   Copy `PaymentService.swift`, `PaymentWebView.swift`, and `Configuration.swift` into your Xcode project.
-
-**2. Create `PaymentCompletionHandler.swift`:**
-
-*   Create a new Swift file named `PaymentCompletionHandler.swift`.
-*   Define a class conforming to `ObservableObject` similar to the one currently in `TokenTestiOSApp.swift`. Include:
-    *   `@Published` properties for `paymentStatus`, `statusString`, `statusReasonInformation`, etc.
-    *   The `PaymentStatus` enum (`.success`, `.failure`, `.pending`, `.cancelled`).
-    *   The `handleIncomingURL(_:)` function to parse the URL, call `PaymentService.getPaymentStatus`, and update the published properties.
-    *   A `reset()` function.
-
-```swift
-// Example: PaymentCompletionHandler.swift
-import Foundation
-import Combine
-
-class PaymentCompletionHandler: ObservableObject {
-    // Published properties for UI updates
-    @Published var paymentStatus: PaymentStatus? = nil
-    @Published var statusString: String = ""
-    @Published var statusReasonInformation: String? = nil
-    @Published var currency: String = ""
-    @Published var refId: String = ""
-    @Published var isCheckingStatus: Bool = false
-
-    // Enum to represent final states for the UI
-    enum PaymentStatus {
-        case success, failure, cancelled, pending
-    }
-
-    func handleIncomingURL(_ url: URL) {
-        print("Received URL: \(url.absoluteString)")
-        guard url.scheme == "paymentdemoapp", url.host == "payment-complete" else { // Replace with YOUR scheme/host
-            return
-        }
-        // TODO: Parse payment-id, state, etc. from URL
-        // TODO: Verify the state parameter matches the expected value (see CSRF Protection)
-        // TODO: Call PaymentService.getPaymentStatus and update published properties
-    }
-
-    func reset() {
-        paymentStatus = nil
-        statusString = ""
-        statusReasonInformation = nil
-        isCheckingStatus = false
-    }
-}
-```
-
-**3. Configure Custom URL Scheme:**
-
-*   Choose a unique URL scheme (e.g., `myapp-payment`).
-*   Register it in your target's `Info.plist` under `URL Types`:
-    *   **Identifier:** `com.yourcompany.yourapp.payment` (or similar)
-    *   **URL Schemes:** `paymentdemoapp` (or your chosen scheme)
-
-**4. Add `.onOpenURL` Handler:**
-
-Attach the `.onOpenURL` modifier to your main `WindowGroup` (or Scene) to receive the callback URL:
-
-```swift
-@main
-struct YourApp: App {
-    @StateObject var paymentCompletionHandler = PaymentCompletionHandler()
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(paymentCompletionHandler)
+                .environmentObject(paymentHandler)
                 .onOpenURL { url in
-                    paymentCompletionHandler.handleIncomingURL(url)
+                    paymentHandler.handleIncomingURL(url)
                 }
         }
     }
 }
 ```
 
-**5. Initiate Payment and Launch External URL:**
+### Step 4: Launch Token.io from Your Payment Flow
+
+From your existing payment view:
 
 ```swift
-// 1. Prepare the payment request
-let paymentRequest = PaymentRequest(
-    initiation: Initiation(
-        refId: "YOUR_REF_ID", // TODO: Replace with your unique reference
-        flowType: "FULL_HOSTED_PAGES",
-        remittanceInformationPrimary: "Invoice #123",
-        remittanceInformationSecondary: "Payment for Goods",
-        amount: Amount(value: "100.00", currency: "GBP"),
-        localInstrument: "FASTER_PAYMENTS",
-        creditor: Creditor(
-            name: "Recipient Name",
-            sortCode: "123456",
-            accountNumber: "12345678"
-        ),
-        callbackUrl: "paymentdemoapp://payment-complete", // TODO: Replace with your scheme
-        callbackState: "random-state-string" // TODO: Generate a secure random string
-    ),
-    pispConsentAccepted: true
-)
+struct PaymentView: View {
+    @EnvironmentObject var paymentHandler: PaymentCompletionHandler
+    @State private var paymentUrl: URL? = nil
+    @State private var isLoading = false
 
-// 2. Call PaymentService to initiate payment and get the payment URL
-Task {
-    do {
-        let (url, _) = try await PaymentService.shared.initiatePayment(
-            environment: .sandbox, // or .production
-            paymentRequest: paymentRequest
-        )
-        // 3. Open the returned payment URL externally via UIApplication
-        UIApplication.shared.open(url, options: [:], completionHandler: nil)
-    } catch {
-        // TODO: Handle error (show alert, etc.)
+    var body: some View {
+        NavigationStack {
+            VStack {
+                // Your existing payment UI
+
+                Button("Pay with Bank") {
+                    initiateTokenPayment()
+                }
+                .disabled(isLoading)
+
+                if isLoading {
+                    ProgressView("Initiating payment...")
+                }
+            }
+            .navigationDestination(isPresented: Binding(
+                get: { paymentUrl != nil },
+                set: { if !$0 { paymentUrl = nil } }
+            )) {
+                PaymentWebView(environment: .sandbox, initialUrl: paymentUrl)
+            }
+            .sheet(isPresented: Binding(
+                get: { paymentHandler.paymentStatus != nil },
+                set: { _ in }
+            )) {
+                PaymentResultView()
+            }
+        }
+    }
+
+    private func initiateTokenPayment() {
+        isLoading = true
+        paymentHandler.reset()
+
+        PaymentService.shared.initiatePayment(
+            environment: .sandbox,
+            currency: "GBP",
+            amountValue: "10.00",
+            localInstrument: "FASTER_PAYMENTS",
+            creditorName: "Your Business",
+            creditorIBAN: nil,
+            creditorSortCode: "123456",
+            creditorAccountNumber: "12345678"
+        ) { result in
+            DispatchQueue.main.async {
+                isLoading = false
+                switch result {
+                case .success(let (url, _)):
+                    paymentUrl = url
+                case .failure(let error):
+                    print("Payment error: \(error)")
+                }
+            }
+        }
     }
 }
 ```
 
-**6. Handle Payment Result:**
+---
 
-The SDK will update `PaymentCompletionHandler` with the result. You can observe its published properties to update your UI accordingly.
+## 🚀 Launching Token.io Web App
+
+### Option A: With Your Token.io Payment URL
+
+If you already generate Token.io payment URLs:
 
 ```swift
-if let status = paymentCompletionHandler.paymentStatus {
-    // Show result screen or message
+private func launchTokenPayment(tokenPaymentUrl: URL) {
+    paymentUrl = tokenPaymentUrl
 }
 ```
 
-## CSRF Protection (Recommended)
-- **Generate State:** Before starting a payment, generate a unique, cryptographically random string for the `callbackState` parameter.
-- **Include State:** Pass this state in the `callbackState` parameter of the `PaymentRequest`.
-- **Store State:** Store the expected state value in a variable accessible when the callback URL arrives (e.g. a SwiftUI `@State` or `@StateObject`).
-- **Verify State:** In `PaymentCompletionHandler.handleIncomingURL`, extract the `state` parameter from the callback URL and compare it to the expected value. Abort if they don't match.
+### Option B: Create Payment Session and Launch WebView
 
-**Why?**
-This prevents attackers from forging payment callbacks to your app.
+To create a payment session and get the web app URL:
 
 ```swift
-// TODO: Generate a secure random string for callbackState
-let callbackState = UUID().uuidString // Example only; use a cryptographically secure generator for production
+// 1. Create payment session
+private func createPaymentSessionAndLaunch() {
+    PaymentService.shared.initiatePayment(
+        environment: .sandbox,
+        currency: "GBP",           // or "EUR"
+        amountValue: "100.50",     // Always use decimal format
+        localInstrument: "FASTER_PAYMENTS", // or "SEPA_INSTANT"
+        creditorName: "Your Business Name",
+        creditorIBAN: nil,         // For EUR payments: "GB29NWBK60161331926819"
+        creditorSortCode: "123456", // For UK payments
+        creditorAccountNumber: "12345678" // For UK payments
+    ) { result in
+        DispatchQueue.main.async {
+            switch result {
+            case .success(let (url, state)):
+                // Launch WebView with the payment URL
+                self.paymentUrl = url
+            case .failure(let error):
+                // Handle error
+                print("Failed to create payment: \(error)")
+            }
+        }
+    }
+}
+
+// 2. Helper for amount formatting
+private func formatAmount(_ amount: Double) -> String {
+    return String(format: "%.2f", amount)
+}
 ```
 
-## Final Integration Checklist
-- [ ] Added SDK files to my project
-- [ ] Registered my custom callback URL scheme in Info.plist
-- [ ] Implemented `.onOpenURL` handler
-- [ ] Generate and store a secure state value for each payment
-- [ ] Pass the state to the backend and verify it on callback
-- [ ] Use only PaymentWebView for payment flows
-- [ ] Handle payment results in the callback handler
-- [ ] Tested the flow with both in-app and browser redirects
-- [ ] Never hard-code production API keys in my app
+**API Key Configuration:**
+
+Add to your `Info.plist`:
+```xml
+<key>API_KEY_SANDBOX</key>
+<string>YOUR_SANDBOX_API_KEY</string>
+<key>API_KEY_BETA</key>
+<string>YOUR_BETA_API_KEY</string>
+```
+
+---
+
+## 🔄 Handling Payment Results
+
+The WebView will return results to your app in two ways:
+
+### In-App Results (Most Common)
+When payment completes within the WebView:
+
+```swift
+struct PaymentResultView: View {
+    @EnvironmentObject var paymentHandler: PaymentCompletionHandler
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Status Icon
+            Image(systemName: statusIcon)
+                .foregroundColor(statusColor)
+                .font(.system(size: 60))
+
+            Text(statusTitle)
+                .font(.title2)
+                .fontWeight(.bold)
+
+            // Payment Details
+            VStack(alignment: .leading, spacing: 8) {
+                DetailRow(label: "Status", value: paymentHandler.statusString)
+                DetailRow(label: "Amount", value: "\(paymentHandler.value) \(paymentHandler.currency)")
+                DetailRow(label: "Reference", value: paymentHandler.refId)
+
+                if let reason = paymentHandler.statusReasonInformation {
+                    DetailRow(label: "Details", value: reason)
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+
+            Button("Done") {
+                paymentHandler.reset()
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .onAppear {
+            // Auto-poll for payment status
+            if !paymentHandler.refId.isEmpty {
+                paymentHandler.pollPaymentStatus(environment: .sandbox)
+            }
+        }
+    }
+
+    private var statusIcon: String {
+        switch paymentHandler.paymentStatus {
+        case .success: return "checkmark.circle.fill"
+        case .failure: return "xmark.circle.fill"
+        case .pending: return "clock.circle.fill"
+        case .cancelled: return "xmark.circle"
+        case nil: return "questionmark.circle"
+        }
+    }
+
+    private var statusColor: Color {
+        switch paymentHandler.paymentStatus {
+        case .success: return .green
+        case .failure, .cancelled: return .red
+        case .pending: return .orange
+        case nil: return .gray
+        }
+    }
+
+    private var statusTitle: String {
+        switch paymentHandler.paymentStatus {
+        case .success: return "Payment Successful"
+        case .failure: return "Payment Failed"
+        case .cancelled: return "Payment Cancelled"
+        case .pending: return "Payment Pending"
+        case nil: return "Unknown Status"
+        }
+    }
+}
+
+struct DetailRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .fontWeight(.medium)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+```
+
+### External Browser Results (For Some Banks)
+Some banks redirect outside the app. These are handled automatically by the URL scheme you configured.
+
+---
+
+## 🎯 WebView Flow Summary
+
+```
+Your Payment Button
+        ↓
+PaymentService.initiatePayment()
+        ↓
+Launch PaymentWebView with URL
+        ↓
+Token.io Web App loads
+        ↓
+User completes bank payment
+        ↓
+Result returns to PaymentCompletionHandler
+        ↓
+Show PaymentResultView
+        ↓
+Continue your payment flow
+```
+
+**That's it! 🎉 Your existing payment interface can now launch Token.io's secure web app.**
+
+---
+
+## 🔍 Troubleshooting WebView Issues
+
+### WebView Not Loading:
+The `PaymentWebView` includes optimized settings:
+```swift
+// These are already configured in PaymentWebView.swift
+preferences.allowsContentJavaScript = true
+configuration.allowsInlineMediaPlayback = true
+configuration.websiteDataStore = WKWebsiteDataStore.default()
+```
+
+### Payment Callbacks Not Working:
+1. **Check your callback scheme** matches in:
+   - Info.plist: `<string>yourapp</string>`
+   - PaymentService: Uses `"yourapp://payment-complete"`
+
+2. **Test callback manually:**
+   ```bash
+   xcrun simctl openurl booted "yourapp://payment-complete?payment-id=test123"
+   ```
+
+### WebView Security Issues:
+- The provided `PaymentWebView` handles domain allowlisting
+- Only Token.io domains load in WebView; others open in Safari
+- All SSL certificates are properly validated
+
+### Debug WebView Loading:
+```swift
+// Add to PaymentWebView for debugging
+#if DEBUG
+webView.configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
+#endif
+```
+
+---
+
+## 🔐 Production Checklist
+
+Before going live:
+
+- [ ] **Update API keys** in Info.plist for production environment
+- [ ] **Test on real devices** with actual bank accounts
+- [ ] **Update callback URL scheme** to your production scheme
+- [ ] **Test both in-app and external browser flows**
+- [ ] **Verify domain allowlist** includes your production domains
+- [ ] **Remove debug logging** from production builds
+- [ ] **Test payment status polling** works correctly
+
+---
+
+## 💰 Currency and Payment Types
+
+**Supported Configurations:**
+
+### UK Payments (GBP):
+```swift
+PaymentService.shared.initiatePayment(
+    environment: .sandbox,
+    currency: "GBP",
+    amountValue: "100.50",
+    localInstrument: "FASTER_PAYMENTS",
+    creditorName: "Your Business",
+    creditorIBAN: nil,
+    creditorSortCode: "123456",
+    creditorAccountNumber: "12345678"
+)
+```
+
+### EUR Payments (SEPA):
+```swift
+PaymentService.shared.initiatePayment(
+    environment: .sandbox,
+    currency: "EUR",
+    amountValue: "100.50",
+    localInstrument: "SEPA_INSTANT", // or "SEPA"
+    creditorName: "Your Business",
+    creditorIBAN: "DE89370400440532013000",
+    creditorSortCode: nil,
+    creditorAccountNumber: nil
+)
+```
+
+**Amount Formatting:**
+- Always use decimal format: `"100.50"` ✅
+- Never use comma separators: `"100,50"` ❌
+- Include currency code: `"GBP"`, `"EUR"` ✅
+
+---
+
+## 🌍 Environment Configuration
+
+The SDK supports multiple environments via `Configuration.swift`:
+
+```swift
+enum ApiEnvironment: String, CaseIterable {
+    case dev = "DEV"
+    case sandbox = "SANDBOX"
+    case beta = "BETA"
+
+    var baseUrl: URL {
+        switch self {
+        case .dev: return URL(string: "https://api.dev.token.io")!
+        case .sandbox: return URL(string: "https://api.sandbox.token.io")!
+        case .beta: return URL(string: "https://api.beta.token.io")!
+        }
+    }
+}
+```
+
+Add corresponding API keys to Info.plist:
+- `API_KEY_DEV`
+- `API_KEY_SANDBOX`
+- `API_KEY_BETA`
+
+---
+
+**🚀 Ready to integrate?** Copy the 4 WebView files and you're set!
+
+**📱 Questions?** Check the demo app to see the WebView in action.
