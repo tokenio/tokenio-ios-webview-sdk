@@ -1,0 +1,21 @@
+name: Cleanup Stale PRs
+on:
+  schedule:
+    - cron: '0 2 * * 1' # Run weekly on Mondays at 2 AM UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  cleanup-stale-prs:
+    runs-on: infra-runner
+    steps:
+      - name: Close stale PRs
+        uses: actions/stale@v9
+        with:
+          days-before-stale: 30
+          days-before-close: 1
+          stale-pr-message: 'This PR has been automatically marked as stale because it has not had recent activity for 30 days. It will be closed now.'
+          close-pr-message: 'This PR has been automatically closed due to inactivity.'
+          stale-pr-label: 'stale'
+          exempt-pr-labels: 'keep-open,dependencies,sync'
+          operations-per-run: 100
+          delete-branch: true
